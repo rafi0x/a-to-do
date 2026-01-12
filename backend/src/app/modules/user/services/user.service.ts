@@ -41,7 +41,8 @@ export class UserService {
 
   async login(payload: LoginDTO): Promise<SuccessResponse> {
     const user = await this.userRepository.findOne({
-      where: { email: payload.email }
+      where: { email: payload.email },
+      select: ['id', 'email', 'password', 'fullName']
     });
 
     if (!user || !user.password) {
@@ -54,7 +55,7 @@ export class UserService {
     );
 
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException('Invalid credentials.23');
     }
 
     const token = this.jwt.sign(

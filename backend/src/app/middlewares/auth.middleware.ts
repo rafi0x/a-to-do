@@ -29,25 +29,16 @@ export class AuthMiddleware implements NestMiddleware {
 
     const user = await this.dataSource
       .createQueryBuilder(User, 'user')
-      .leftJoinAndSelect('user.userRoles', 'userRole')
-      .leftJoinAndSelect('userRole.role', 'role')
-      .where('user.id = :userId', { userId: verifiedUser.user.id })
-      .andWhere('user.isActive = :isActive', { isActive: true })
+      .where('user.id = :userId', { userId: verifiedUser.id })
       .getOne();
 
     if (!user) {
       throw new UnauthorizedException("Unauthorized Access Detected");
     }
 
-    let userData: IAuthUser = {};
-
     const { password, ...rest } = user;
 
-    userData = {
-      ...rest,
-    };
-
-    req.verifiedUser = userData;
+    req.verifiedUser = rest;
     next();
   }
 }

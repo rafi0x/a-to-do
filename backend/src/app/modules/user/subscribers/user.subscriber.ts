@@ -1,3 +1,4 @@
+import { BcryptHelper } from "src/app/helpers";
 import {
   DataSource,
   EntitySubscriberInterface,
@@ -6,7 +7,6 @@ import {
   UpdateEvent,
 } from "typeorm";
 import { User } from "../entities/user.entity";
-import { BcryptHelper } from "src/app/helpers";
 
 @EventSubscriber()
 export class UserSubscriber implements EntitySubscriberInterface<User> {
@@ -22,18 +22,20 @@ export class UserSubscriber implements EntitySubscriberInterface<User> {
   }
 
   async beforeInsert(event: InsertEvent<User>) {
-    if (event.entity?.password) {
-      event.entity.password = await this.bcryptHelper.hash(
+    if (event.entity.password) {
+      const hashedPassword = await this.bcryptHelper.hash(
         event.entity.password,
       );
+      event.entity.password = hashedPassword;
     }
   }
 
   async beforeUpdate(event: UpdateEvent<User>) {
     if (event.entity?.password) {
-      event.entity.password = await this.bcryptHelper.hash(
+      const hashedPassword = await this.bcryptHelper.hash(
         event.entity.password,
       );
+      event.entity.password = hashedPassword;
     }
   }
 }
