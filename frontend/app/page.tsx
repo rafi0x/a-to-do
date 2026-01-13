@@ -1,6 +1,7 @@
 "use client";
 
 import { deleteJSON, getJSON, postJSON, putJSON } from "@/lib/api";
+import { FilterTodoQuery, TodoStatus } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
@@ -23,8 +24,12 @@ export default function Home() {
   const [editTitle, setEditTitle] = useState("");
   const [editDesc, setEditDesc] = useState("");
 
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<TodoStatus | "">("");
+
   const statusTimeouts = useRef<Record<string, NodeJS.Timeout>>({});
   const isSubmitting = useRef(false);
+  const searchTimeout = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem("auth_token");
@@ -35,11 +40,35 @@ export default function Home() {
     fetchTodos();
   }, [router]);
 
+  useEffect(() => {
+    if (searchTimeout.current) {
+      clearTimeout(searchTimeout.current);
+    }
+
+    searchTimeout.current = setTimeout(() => {
+      fetchTodos();
+    }, 500);
+
+    return () => {
+      if (searchTimeout.current) {
+        clearTimeout(searchTimeout.current);
+      }
+    };
+  }, [searchTerm, statusFilter]);
+
   const fetchTodos = async () => {
     if (Object.keys(statusTimeouts.current).length > 0) return;
 
     try {
-      const res = await getJSON<Todo[]>("/todos");
+      const query: FilterTodoQuery = {};
+      if (searchTerm.trim()) {
+        query.searchTerm = searchTerm.trim();
+      }
+      if (statusFilter) {
+        query.status = statusFilter as TodoStatus;
+      }
+
+      const res = await getJSON<Todo[]>("/todos", query);
       console.log("🚀 ~ fetchTodos ~ res:", res);
       if (res.data) setTodos(res.data);
     } catch (e) {
@@ -79,12 +108,10 @@ export default function Home() {
     };
     const nextStatus = statusMap[todo.status || "PENDING"];
 
-    // Optimistic update
     setTodos((prev) =>
       prev.map((t) => (t.id === todo.id ? { ...t, status: nextStatus } : t))
     );
 
-    // Debounce API call
     if (statusTimeouts.current[todo.id]) {
       clearTimeout(statusTimeouts.current[todo.id]);
     }
@@ -92,7 +119,10 @@ export default function Home() {
     statusTimeouts.current[todo.id] = setTimeout(async () => {
       await putJSON(`/todos/${todo.id}`, { status: nextStatus });
       delete statusTimeouts.current[todo.id];
-      // Only refetch if no other pending updates
+      console.log(
+        "🚀 ~ handleStatusCycle ~ statusTimeouts.current:",
+        statusTimeouts.current
+      );
       if (Object.keys(statusTimeouts.current).length === 0) {
         fetchTodos();
       }
@@ -189,6 +219,28 @@ export default function Home() {
           Add Todo
         </button>
       </form>
+
+      <div className="bg-white p-4 rounded mb-6 border shadow-sm">
+        <h2 className="text-xl font-semibold mb-4">Filter Todos</h2>
+        <div className="flex gap-4">
+          <input
+            className="border p-2 rounded flex-1"
+            placeholder="Search todos..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          <select
+            className="border p-2 rounded"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as TodoStatus | "")}
+          >
+            <option value="">All</option>
+            <option value={TodoStatus.PENDING}>Pending</option>
+            <option value={TodoStatus.IN_PROGRESS}>In Progress</option>
+            <option value={TodoStatus.DONE}>Done</option>
+          </select>
+        </div>
+      </div>
 
       <div className="space-y-4">
         {todos.map((todo) => (

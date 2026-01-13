@@ -26,12 +26,12 @@ export class TodoRepository implements ITodoRepository {
     }
 
     if (title) {
-      queryBuilder.andWhere('todo.title ILIKE :title', { title: `%${title}%` });
+      queryBuilder.andWhere('LOWER(todo.title) LIKE LOWER(:title)', { title: `%${title}%` });
     }
 
     if (searchTerm) {
       queryBuilder.andWhere(
-        '(todo.title ILIKE :searchTerm OR todo.description ILIKE :searchTerm)',
+        '(LOWER(todo.title) LIKE LOWER(:searchTerm) OR LOWER(todo.description) LIKE LOWER(:searchTerm))',
         { searchTerm: `%${searchTerm}%` }
       );
     }
